@@ -7,6 +7,7 @@ $config = array(
     'telegram' => false,
     'google_sheets' => false,
     'logfile' => true,
+    'amo' => false,
 );
 
 /**
@@ -25,7 +26,11 @@ function getActualLink() {
     return 'http://' . $_SERVER['HTTP_HOST'] . $_SERVER['PHP_SELF'];
 }
 
-
+function getCurrentDate() {
+    $date = new DateTime();
+    $date = $date->format('d.m.Y, H:i');
+    return $date;
+}
 
 ?>
 
@@ -183,5 +188,48 @@ if ($config['logfile']) {
     fwrite($fp, $text);
     fclose($fp);
 
+}
+?>
+
+<?php
+
+if ($config['amo']) {
+    // AMO lead
+    $arr = array(
+        "Метод доставки: " => $order_billing_last_name,
+        "Город доставки: " => $order_shipping_city,
+        "Адрес доставки: " => $order_shipping_address_1,
+        "\n\nТовары:\n" => $zufa_amo_product_info,
+        "Стоимость доставки: " => $order_shipping_totale,
+        "Метод оплаты: " => $order_payment_method_title,
+        "Итого с доставкой: " => $order_total,
+    );
+    $paramsArray = array(
+    'fields[name_1]'  => $order_billing_first_name,
+    'fields[502127_1][247303]'  => $order_billing_email,
+    'fields[502125_1][247291]' => $order_billing_phone,
+    'fields[note_2]' => '',
+    // This parameters you can find at from publishing section → Wordpress shortcode
+    'form_id' => '',
+    'hash'    => ''
+    );
+    foreach ($arr as $key => $value) {
+        $paramsArray['fields[note_2]'] .= $key." ".$value."\n";
+    };
+
+    $vars = http_build_query($paramsArray);
+
+    $options = array(
+    'http' => array(
+        'method'  => 'POST',
+        'header'  => 'Content-type: application/x-www-form-urlencoded',
+        'content' => $vars
+    )
+    );
+
+    $send_counter = 0;
+
+    $context  = stream_context_create($options);
+    file_get_contents('https://forms.amocrm.ru/queue/add', false, $context);
 }
 ?>
